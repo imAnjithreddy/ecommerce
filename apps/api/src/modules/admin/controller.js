@@ -230,59 +230,6 @@ class AdminController {
     }
   }
 
-  /**
-   * Coupons Management
-   */
-  async listCoupons(req, res, next) {
-    try {
-      const coupons = await Coupon.find({ tenantId: req.tenantId })
-        .sort({ createdAt: -1 })
-        .lean();
-      return ApiResponse.success(res, coupons);
-    } catch (error) {
-      next(error);
-    }
-  }
-
-  async createCoupon(req, res, next) {
-    try {
-      const { code, type, value, minimumOrderValue, endDate, usageLimit } = req.body;
-      if (!code || !type || value === undefined) {
-        throw new BadRequestError('code, type (percentage/fixed), and value are required');
-      }
-
-      const existing = await Coupon.findOne({ tenantId: req.tenantId, code: code.toUpperCase().trim() });
-      if (existing) {
-        throw new BadRequestError('A coupon with this code already exists');
-      }
-
-      const coupon = await Coupon.create({
-        tenantId: req.tenantId,
-        code: code.toUpperCase().trim(),
-        type,
-        value: Number(value),
-        minimumOrderValue: Number(minimumOrderValue || 0),
-        endDate: endDate ? new Date(endDate) : null,
-        usageLimit: usageLimit ? Number(usageLimit) : null
-      });
-
-      return ApiResponse.created(res, coupon, 'Coupon created successfully');
-    } catch (error) {
-      next(error);
-    }
-  }
-
-  async deleteCoupon(req, res, next) {
-    try {
-      const coupon = await Coupon.findOneAndDelete({ _id: req.params.id, tenantId: req.tenantId });
-      if (!coupon) {
-        throw new NotFoundError('Coupon');
-      }
-      return ApiResponse.success(res, null, 'Coupon deleted successfully');
-    } catch (error) {
-      next(error);
-    }
-  }
 }
 
 module.exports = new AdminController();

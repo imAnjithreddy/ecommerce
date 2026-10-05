@@ -24,7 +24,8 @@ export default function RegisterPage() {
       const res = await fetch(`${API_BASE}/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password, firstName, lastName })
+        body: JSON.stringify({ email, password, firstName, lastName }),
+        credentials: 'include'
       });
 
       const data = await res.json();

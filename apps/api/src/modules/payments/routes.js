@@ -13,7 +13,7 @@ router.post('/webhooks/:provider', async (req, res, next) => {
 
     const result = await paymentService.processWebhook({
       providerName: provider,
-      payload: req.body,
+      payload: req.rawBody || req.body,
       signature
     });
 

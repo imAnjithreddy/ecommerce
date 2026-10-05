@@ -16,6 +16,7 @@ const { isMockRedis } = require('./config/redis');
 const authRoutes = require('./modules/auth/routes');
 const tenantRoutes = require('./modules/tenants/routes');
 const storefrontRoutes = require('./modules/storefront/routes');
+const orderRoutes = require('./modules/orders/routes');
 const adminRoutes = require('./modules/admin/routes');
 const platformRoutes = require('./modules/platform/routes');
 const paymentRoutes = require('./modules/payments/routes');
@@ -40,7 +41,12 @@ app.use(cors({
 }));
 
 app.use(cookieParser(env.COOKIE_SECRET));
-app.use(express.json({ limit: '10mb' }));
+app.use(express.json({
+  limit: '10mb',
+  verify: (req, res, buf) => {
+    req.rawBody = buf;
+  }
+}));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Pino-HTTP request logger
@@ -69,9 +75,12 @@ app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/tenants', tenantRoutes);
 app.use('/api/v1/storefront', storefrontRoutes);
 app.use('/api/v1/admin', adminRoutes);
+app.use('/api/v1/admin/coupons', require('./modules/coupons/routes').adminRouter); // mount admin coupon routes
 app.use('/api/v1/platform', platformRoutes);
 app.use('/api/v1/payments', paymentRoutes);
 app.use('/api/v1/media', mediaRoutes);
+app.use('/api/v1/orders', orderRoutes);
+app.use('/api/v1/coupons', require('./modules/coupons/routes'));
 
 // Catch 404
 app.use((req, res, next) => {
