@@ -2,6 +2,16 @@ const crypto = require('crypto');
 const env = require('../../../config/environment');
 const { logger } = require('../../../core/logger/logger');
 
+let stripe;
+try {
+  stripe = require('stripe')(env.STRIPE_SECRET_KEY);
+} catch (error) {
+  logger.warn('Stripe SDK not initialized. Ensure STRIPE_SECRET_KEY is set and stripe package is installed.');
+  stripe = {
+    webhooks: { constructEvent: () => { throw new Error('Stripe mock in use'); } }
+  };
+}
+
 class StripeProvider {
   constructor() {
     this.name = 'stripe';
@@ -46,8 +56,19 @@ class StripeProvider {
   verifyWebhookSignature({ payload, signature, secret }) {
     const signingSecret = secret || this.webhookSecret;
     if (!signature || !signingSecret) return false;
-    // In real Stripe integration: stripe.webhooks.constructEvent(payload, signature, secret)
-    // HMAC-SHA256 signature check:
+
+    try {
+      // payload could be a Buffer from rawBody, so pass it directly or as string
+      const payloadString = Buffer.isBuffer(payload) ? payload.toString('utf8') :
+                            typeof payload === 'string' ? payload : JSON.stringify(payload);
+
+      stripe.webhooks.constructEvent(payloadString, signature, signingSecret);
+      return true;
+    } catch (err) {
+      logger.warn('Stripe webhook signature verification failed via SDK', { error: err.message });
+    }
+
+    // HMAC-SHA256 signature check (fallback for testing/mocks):
     try {
       const parts = signature.split(',').reduce((acc, part) => {
         const [k, v] = part.split('=');
@@ -68,12 +89,28 @@ class StripeProvider {
   }
 
   parseWebhookEvent(body) {
+    // If body is a buffer (from rawBody), parse it
+    let parsedBody = body;
+    if (Buffer.isBuffer(body)) {
+      try {
+        parsedBody = JSON.parse(body.toString('utf8'));
+      } catch (e) {
+        parsedBody = {};
+      }
+    } else if (typeof body === 'string') {
+      try {
+        parsedBody = JSON.parse(body);
+      } catch (e) {
+        parsedBody = {};
+      }
+    }
+
     return {
-      eventType: body.type || '',
-      providerTransactionId: body.data && body.data.object ? body.data.object.id : null,
-      orderId: body.data && body.data.object && body.data.object.metadata ? body.data.object.metadata.orderId : null,
-      tenantId: body.data && body.data.object && body.data.object.metadata ? body.data.object.metadata.tenantId : null,
-      status: body.type === 'payment_intent.succeeded' ? 'paid' : 'failed'
+      eventType: parsedBody.type || '',
+      providerTransactionId: parsedBody.data && parsedBody.data.object ? parsedBody.data.object.id : null,
+      orderId: parsedBody.data && parsedBody.data.object && parsedBody.data.object.metadata ? parsedBody.data.object.metadata.orderId : null,
+      tenantId: parsedBody.data && parsedBody.data.object && parsedBody.data.object.metadata ? parsedBody.data.object.metadata.tenantId : null,
+      status: parsedBody.type === 'payment_intent.succeeded' ? 'paid' : 'failed'
     };
   }
 }
