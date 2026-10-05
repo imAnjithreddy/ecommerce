@@ -11,6 +11,15 @@ router.use(requirePlatformAdmin);
 router.get('/stats', platformController.getPlatformStats);
 router.get('/tenants', platformController.listTenants);
 router.post('/tenants', platformController.onboardTenant);
+router.patch('/tenants/:id/status', async (req, res, next) => {
+  try {
+    const { status } = req.body;
+    req.body = { status }; // only allow updating status
+    await platformController.updateTenant(req, res, next);
+  } catch (error) {
+    next(error);
+  }
+});
 router.patch('/tenants/:id', platformController.updateTenant);
 router.get('/users', platformController.listUsers);
 

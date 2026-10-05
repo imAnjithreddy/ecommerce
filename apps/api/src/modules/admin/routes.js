@@ -60,11 +60,6 @@ router.post('/inventory/adjust', requireTenantMembership(PERMISSIONS.INVENTORY_U
 // Customers
 router.get('/customers', requireTenantMembership(PERMISSIONS.CUSTOMERS_READ), adminController.listCustomers);
 
-// Coupons
-router.get('/coupons', requireTenantMembership(PERMISSIONS.COUPONS_READ), adminController.listCoupons);
-router.post('/coupons', requireTenantMembership(PERMISSIONS.COUPONS_CREATE), adminController.createCoupon);
-router.delete('/coupons/:id', requireTenantMembership(PERMISSIONS.COUPONS_DELETE), adminController.deleteCoupon);
-
 // Theme & Settings
 router.patch('/theme', requireTenantMembership(PERMISSIONS.THEMES_UPDATE), tenantController.updateTheme);
 router.patch('/settings', requireTenantMembership(PERMISSIONS.SETTINGS_UPDATE), tenantController.updateSettings);

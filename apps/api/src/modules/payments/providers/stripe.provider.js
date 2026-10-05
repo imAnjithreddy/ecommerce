@@ -57,34 +57,16 @@ class StripeProvider {
     const signingSecret = secret || this.webhookSecret;
     if (!signature || !signingSecret) return false;
 
-    try {
-      // payload could be a Buffer from rawBody, so pass it directly or as string
-      const payloadString = Buffer.isBuffer(payload) ? payload.toString('utf8') :
-                            typeof payload === 'string' ? payload : JSON.stringify(payload);
+    // payload could be a Buffer from rawBody, so pass it directly or as string
+    const payloadString = Buffer.isBuffer(payload) ? payload.toString('utf8') :
+                          typeof payload === 'string' ? payload : JSON.stringify(payload);
 
+    try {
       stripe.webhooks.constructEvent(payloadString, signature, signingSecret);
       return true;
     } catch (err) {
-      logger.warn('Stripe webhook signature verification failed via SDK', { error: err.message });
-    }
-
-    // HMAC-SHA256 signature check (fallback for testing/mocks):
-    try {
-      const parts = signature.split(',').reduce((acc, part) => {
-        const [k, v] = part.split('=');
-        if (k && v) acc[k.trim()] = v.trim();
-        return acc;
-      }, {});
-
-      if (!parts.t || !parts.v1) return false;
-      const expectedSignature = crypto
-        .createHmac('sha256', signingSecret)
-        .update(`${parts.t}.${typeof payload === 'string' ? payload : JSON.stringify(payload)}`)
-        .digest('hex');
-
-      return crypto.timingSafeEqual(Buffer.from(parts.v1), Buffer.from(expectedSignature));
-    } catch (err) {
-      return false;
+      logger.warn('Stripe webhook signature verification failed', { error: err.message });
+      return false; // Fail immediately if SDK validation fails
     }
   }
 
